@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>极简记账 · 语音AA分账</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 12px;
+            padding-bottom: 80px;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 550px;
+            margin: 0 auto;
+        }
+        /* 卡片 */
+        .card {
+            background: white;
+            border-radius: 28px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06);
+        }
+        .header {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+        .sub {
+            color: #64748b;
+            font-size: 13px;
+        }
+        /* 表单 */
+        .input-group {
+            margin-bottom: 16px;
+        }
+        label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #475569;
+            display: block;
+            margin-bottom: 6px;
+        }
+        input, select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+            font-size: 16px;
+            background: white;
+            font-family: inherit;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+        .row-2 {
+            display: flex;
+            gap: 12px;
+        }
+        .row-2 .input-group {
+            flex: 1;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 40px;
+            font-size: 17px;
+            font-weight: 600;
+            border: none;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 8px;
+        }
+        button:active {
+            transform: scale(0.97);
+        }
+        .voice-btn {
+            background: #8b5cf6;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .voice-btn.listening {
+            background: #ef4444;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .btn-outline {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+        }
+        /* 记录条目 */
+        .record-item {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 14px;
+            margin-bottom: 10px;
+            border: 1px solid #eef2f8;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .record-check {
+            width: 28px;
+            height: 28px;
+            accent-color: #3b82f6;
+            transform: scale(1.1);
+        }
+        .record-content {
+            flex: 1;
+        }
+        .record-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .record-desc {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .record-amount {
+            text-align: right;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .share-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 12px 16px 24px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+            border-top: 1px solid #eef2f8;
+            display: flex;
+            gap: 12px;
+            z-index: 10;
+        }
+        .share-bar button {
+            margin: 0;
+            flex: 1;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+        }
+        .badge {
+            background: #e6f0ff;
+            padding: 2px 8px;
+            border-radius: 30px;
+            font-size: 11px;
+            display: inline-block;
+            margin-left: 8px;
+        }
+        hr {
+            margin: 12px 0;
+            border: none;
+            border-top: 1px solid #eef2f8;
+        }
+        .summary-text {
+            font-family: monospace;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 16px;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 20px;
+            right: 20px;
+            background: #1e293b;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 40px;
+            font-size: 14px;
+            z-index: 20;
+            transition: 0.2s;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="header">
+            🧾 极简记账
+            <span class="sub">AA自动算</span>
+        </div>
+        <div class="sub" style="margin-bottom: 16px;">🎙️ 语音 / 手动，3秒记一笔</div>
+
+        <!-- 语音按钮 -->
+        <button id="voiceBtn" class="voice-btn">🎙️ 语音输入 (完整语句)</button>
+        <div class="sub" style="text-align:center; margin-bottom:12px;">⬇️ 或手动填写 ⬇️</div>
+
+        <!-- 手动表单 -->
+        <div class="row-2">
+            <div class="input-group">
+                <label>💰 金额</label>
+                <input type="number" id="amount" placeholder="0.00" step="any" value="">
+            </div>
+            <div class="input-group">
+                <label>💱 货币</label>
+                <select id="currency">
+                    <option value="CNY">人民币 CNY</option>
+                    <option value="JPY">日元 JPY</option>
+                    <option value="EUR">欧元 EUR</option>
+                    <option value="KRW">韩元 KRW</option>
+                    <option value="USD">美元 USD</option>
+                </select>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>📝 买了啥</label>
+            <input type="text" id="item" placeholder="例：拉面、门票、打车" value="">
+        </div>
+        <div class="input-group">
+            <label>👥 AA人数 (包括自己)</label>
+            <select id="peopleCount">
+                <option value="2">2人 (÷2)</option>
+                <option value="3">3人 (÷3)</option>
+                <option value="4">4人 (÷4)</option>
+                <option value="5">5人 (÷5)</option>
+                <option value="1">不分摊 / 个人</option>
+            </select>
+        </div>
+        <button id="addBtn">✨ 记一笔</button>
+    </div>
+
+    <!-- 记录列表 + 多选分享 -->
+    <div class="card" style="padding-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div class="header" style="font-size: 18px;">📋 消费记录</div>
+            <button id="selectAllBtn" class="btn-outline" style="width: auto; padding: 6px 14px; margin:0; font-size:13px;">全选/反选</button>
+        </div>
+        <div id="recordsContainer">
+            <div class="empty-state">✨ 暂无记录，点上方记一笔<br>🎤 也试试语音~</div>
+        </div>
+    </div>
+</div>
+
+<!-- 底部分享栏 -->
+<div class="share-bar">
+    <button id="shareSelectedBtn" style="background:#10b981;">📤 分享选中记录</button>
+    <button id="copyAllShareBtn" class="btn-outline" style="background:#f1f5f9;">📋 复制全部记录</button>
+</div>
+
+<div id="toastMsg" class="toast">✅ 已复制</div>
+
+<script>
+    // ---------- 汇率 (用于显示人民币换算，非核心但保留) ----------
+    let exchangeRates = { CNY: 1, JPY: 20.5, EUR: 0.13, KRW: 190, USD: 0.14 };
+    async function fetchRates() {
+        try {
+            const res = await fetch('https://api.exchangerate-api.com/v4/latest/CNY');
+            const data = await res.json();
+            if (data && data.rates) {
+                exchangeRates = {
+                    CNY: 1,
+                    JPY: data.rates.JPY || 20.5,
+                    EUR: data.rates.EUR || 0.13,
+                    KRW: data.rates.KRW || 190,
+                    USD: data.rates.USD || 0.14
+                };
+            }
+        } catch(e) { console.warn("汇率获取失败"); }
+    }
+    fetchRates();
+    setInterval(fetchRates, 3600000);
+
+    // 转人民币辅助
+    function toCNY(amount, currency) {
+        if(currency === 'CNY') return amount;
+        let rate = exchangeRates[currency] || 1;
+        return amount / rate;
+    }
+
+    // 数据结构
+    let records = [];       // 每条记录 { id, amount, currency, item, peopleCount, timestamp }
+    const STORAGE_KEY = "simple_split_records";
+
+    function saveToLocal() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    }
+
+    function loadFromLocal() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(raw) {
+            try {
+                records = JSON.parse(raw);
+            } catch(e) { records = []; }
+        }
+        if(!records.length) {
+            // 示例数据
+            records = [
+                { id: "1", amount: 50, currency: "CNY", item: "拉面", peopleCount: 2, timestamp: Date.now() - 3600000 },
+                { id: "2", amount: 35, currency: "CNY", item: "咖啡", peopleCount: 2, timestamp: Date.now() - 7200000 },
+                { id: "3", amount: 1200, currency: "JPY", item: "章鱼烧", peopleCount: 3, timestamp: Date.now() - 1800000 }
+            ];
+            saveToLocal();
+        }
+        renderRecords();
+    }
+
+    // 添加记录
+    function addRecord(amount, currency, item, peopleCount) {
+        if(!amount || amount <= 0) {
+            showToast("请输入金额 (>0)");
+            return false;
+        }
+        if(!item.trim()) {
+            showToast("写一下买了啥吧～");
+            return false;
+        }
+        const newRecord = {
+            id: Date.now() + "" + Math.random().toString(36).substr(2, 4),
+            amount: parseFloat(amount),
+            currency: currency,
+            item: item.trim(),
+            peopleCount: parseInt(peopleCount),
+            timestamp: Date.now()
+        };
+        records.unshift(newRecord); // 最新的在上面
+        saveToLocal();
+        renderRecords();
+        return true;
+    }
+
+    // 删除记录
+    function deleteRecord(id) {
+        records = records.filter(r => r.id != id);
+        saveToLocal();
+        renderRecords();
+        showToast("已删除");
+    }
+
+    // 渲染列表 (带复选框)
+    let selectedIds = new Set();  // 存储选中的id
+
+    function renderRecords() {
+        const container = document.getElementById("recordsContainer");
+        if(!records.length) {
+            container.innerHTML = `<div class="empty-state">📭 暂无记录，记一笔吧</div>`;
+            return;
+        }
+        let html = "";
+        records.forEach(rec => {
+            const cnyAmount = toCNY(rec.amount, rec.currency);
+            const perPerson = rec.peopleCount > 1 ? (cnyAmount / rec.peopleCount).toFixed(2) : null;
+            const date = new Date(rec.timestamp);
+            const timeStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+            const checkedAttr = selectedIds.has(rec.id) ? "checked" : "";
+            html += `
+                <div class="record-item">
+                    <input type="checkbox" class="record-check" data-id="${rec.id}" ${checkedAttr}>
+                    <div class="record-content">
+                        <div class="record-title">${rec.item} <span class="badge">${rec.currency} ${rec.amount}</span></div>
+                        <div class="record-desc">${timeStr} · ${rec.peopleCount === 1 ? '🙋个人' : `👥 ${rec.peopleCount}人AA`}</div>
+                        <div class="record-desc">≈ ¥${cnyAmount.toFixed(2)} ${perPerson ? ` (每人¥${perPerson})` : ''}</div>
+                    </div>
+                    <div class="record-amount">
+                        <button class="delete-single" data-id="${rec.id}" style="background:none; border:none; font-size:20px; width:auto; padding:0 6px; margin:0;">🗑️</button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+        // 绑定checkbox变化
+        document.querySelectorAll('.record-check').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const id = cb.getAttribute('data-id');
+                if(cb.checked) selectedIds.add(id);
+                else selectedIds.delete(id);
+            });
+        });
+        // 绑定删除按钮
+        document.querySelectorAll('.delete-single').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.getAttribute('data-id');
+                selectedIds.delete(id);
+                deleteRecord(id);
+            });
+        });
+    }
+
+    // 生成分享文本 (根据选中的记录)
+    function generateShareText(ids) {
+        const selectedRecords = records.filter(r => ids.includes(r.id));
+        if(selectedRecords.length === 0) {
+            showToast("请先勾选要分享的记录");
+            return null;
+        }
+        let lines = [];
+        lines.push("📋 【旅行AA账单】");
+        lines.push("");
+        let totalOwed = 0;
+        selectedRecords.forEach((rec, idx) => {
+            const cnyAmount = toCNY(rec.amount, rec.currency);
+            const perPersonCNY = rec.peopleCount > 1 ? (cnyAmount / rec.peopleCount) : 0;
+            const perPersonShow = perPersonCNY.toFixed(2);
+            lines.push(`${idx+1}. ${rec.item} — ${rec.currency} ${rec.amount} (≈¥${cnyAmount.toFixed(2)})`);
+            if(rec.peopleCount > 1) {
+                lines.push(`   👥 ${rec.peopleCount}人分摊 → 每人应付 ¥${perPersonShow}`);
+                totalOwed += perPersonCNY;
+            } else {
+                lines.push(`   🙋 个人消费，不计入AA`);
+            }
+        });
+        lines.push("");
+        lines.push(`💰 对方应付总额: ¥${totalOwed.toFixed(2)}`);
+        lines.push(`📅 生成时间: ${new Date().toLocaleString()}`);
+        lines.push("--- 极简记账 · 语音AA助手 ---");
+        return lines.join("\n");
+    }
+
+    // 分享选中
+    function shareSelected() {
+        if(selectedIds.size === 0) {
+            showToast("请先勾选记录再分享");
+            return;
+        }
+        const text = generateShareText(Array.from(selectedIds));
+        if(text) {
+            // 尝试使用Web Share API (移动端原生分享)
+            if(navigator.share) {
+                navigator.share({
+                    title: '旅行账单',
+                    text: text,
+                }).catch(() => {
+                    copyToClipboard(text);
+                    showToast("已复制到剪贴板，可粘贴发给朋友");
+                });
+            } else {
+                copyToClipboard(text);
+                showToast("已复制分享内容，粘贴到微信发送");
+            }
+        }
+    }
+
+    // 复制全部记录（不分摊逻辑也给出对方应付总额? 按照所有共同消费记录）
+    function copyAllForFriend() {
+        // 选出peopleCount>1的记录作为共同消费
+        const commonRecords = records.filter(r => r.peopleCount > 1);
+        if(commonRecords.length === 0) {
+            showToast("没有共同消费记录，无法生成结算");
+            return;
+        }
+        let lines = [];
+        lines.push("📋 【全部共同消费账单】");
+        lines.push("");
+        let totalOwed = 0;
+        commonRecords.forEach((rec, idx) => {
+            const cnyAmount = toCNY(rec.amount, rec.currency);
+            const perPerson = cnyAmount / rec.peopleCount;
+            lines.push(`${idx+1}. ${rec.item} — ${rec.currency} ${rec.amount} (≈¥${cnyAmount.toFixed(2)})`);
+            lines.push(`   👥 ${rec.peopleCount}人AA → 每人 ¥${perPerson.toFixed(2)}`);
+            totalOwed += perPerson;
+        });
+        lines.push("");
+        lines.push(`🧾 对方总共应付: ¥${totalOwed.toFixed(2)}`);
+        lines.push(`📅 生成: ${new Date().toLocaleString()}`);
+        const text = lines.join("\n");
+        copyToClipboard(text);
+        showToast("已复制完整账单，可发给朋友");
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            // success
+        }).catch(() => {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+        });
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById("toastMsg");
+        toast.textContent = msg;
+        toast.style.opacity = "1";
+        setTimeout(() => {
+            toast.style.opacity = "0";
+        }, 2000);
+    }
+
+    // 全选/反选
+    function toggleSelectAll() {
+        if(selectedIds.size === records.length) {
+            selectedIds.clear();
+        } else {
+            records.forEach(r => selectedIds.add(r.id));
+        }
+        renderRecords();  // 刷新复选框状态
+    }
+
+    // 语音识别 (完整版)
+    let recognition = null;
+    function initSpeech() {
+        if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            document.getElementById("voiceBtn").style.opacity = "0.5";
+            document.getElementById("voiceBtn").innerHTML = "🎤 语音不支持此浏览器";
+            return;
+        }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.lang = 'zh-CN';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        const voiceBtn = document.getElementById("voiceBtn");
+        voiceBtn.addEventListener("click", () => {
+            try {
+                recognition.start();
+                voiceBtn.classList.add("listening");
+                voiceBtn.innerHTML = "🔴 聆听中... 请说话";
+                setTimeout(() => {
+                    if(voiceBtn.classList.contains("listening")) {
+                        voiceBtn.classList.remove("listening");
+                        voiceBtn.innerHTML = "🎙️ 语音输入 (完整语句)";
+                    }
+                }, 10000);
+            } catch(e) {
+                showToast("请稍后再试");
+            }
+        });
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            voiceBtn.classList.remove("listening");
+            voiceBtn.innerHTML = "🎙️ 语音输入 (完整语句)";
+            parseVoiceCommand(transcript);
+        };
+        recognition.onerror = (event) => {
+            voiceBtn.classList.remove("listening");
+            voiceBtn.innerHTML = "🎙️ 语音输入 (完整语句)";
+            showToast("语音识别失败，请手动输入");
+        };
+        recognition.onend = () => {
+            voiceBtn.classList.remove("listening");
+            voiceBtn.innerHTML = "🎙️ 语音输入 (完整语句)";
+        };
+    }
+
+    // 解析语音: “拉面50块3个人” 或 “咖啡35元2人” “门票1200日元4人”
+    function parseVoiceCommand(text) {
+        let amount = null;
+        let currency = "CNY";
+        let people = 2;
+        let item = text;
+
+        // 提取金额数字
+        const amountMatch = text.match(/(\d+(?:\.\d+)?)/);
+        if(amountMatch) amount = parseFloat(amountMatch[1]);
+        else { showToast("没听清金额，请手动输入"); return; }
+
+        // 货币关键词
+        if(text.includes("日元") || text.includes("日币")) currency = "JPY";
+        else if(text.includes("欧元")) currency = "EUR";
+        else if(text.includes("韩元")) currency = "KRW";
+        else if(text.includes("美元") || text.includes("美金")) currency = "USD";
+        else currency = "CNY";
+
+        // 人数: "2个人" "3人" "AA 4人"
+        let peopleMatch = text.match(/(\d+)[\s]*[人位]/);
+        if(peopleMatch) people = parseInt(peopleMatch[1]);
+        else if(text.includes("个人") || text.includes("自己")) people = 1;
+        else people = 2;
+
+        // 商品名: 去掉金额货币人数后的部分
+        let cleanItem = text.replace(amountMatch?.[0] || "", "")
+                            .replace(/日元|欧元|韩元|美元|美金|元|块/g, "")
+                            .replace(/\d+[人位]/g, "")
+                            .replace(/[A-Z]{3}/g, "")
+                            .trim();
+        if(!cleanItem) cleanItem = "消费";
+
+        // 自动填入表单并保存
+        document.getElementById("amount").value = amount;
+        document.getElementById("currency").value = currency;
+        document.getElementById("item").value = cleanItem;
+        document.getElementById("peopleCount").value = people;
+        // 自动保存
+        addRecord(amount, currency, cleanItem, people);
+        // 清空金额字段便于下一条
+        document.getElementById("amount").value = "";
+        document.getElementById("item").value = "";
+        showToast(`✅ 已记录: ${cleanItem} ${amount}${currency} ${people}人`);
+    }
+
+    // 手动添加
+    document.getElementById("addBtn").addEventListener("click", () => {
+        const amount = parseFloat(document.getElementById("amount").value);
+        const currency = document.getElementById("currency").value;
+        const item = document.getElementById("item").value;
+        const peopleCount = document.getElementById("peopleCount").value;
+        if(addRecord(amount, currency, item, peopleCount)) {
+            document.getElementById("amount").value = "";
+            document.getElementById("item").value = "";
+        }
+    });
+
+    document.getElementById("shareSelectedBtn").addEventListener("click", shareSelected);
+    document.getElementById("copyAllShareBtn").addEventListener("click", copyAllForFriend);
+    document.getElementById("selectAllBtn").addEventListener("click", toggleSelectAll);
+
+    loadFromLocal();
+    initSpeech();
+</script>
+</body>
+</html>
