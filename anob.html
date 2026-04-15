@@ -3,385 +3,371 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>今日账单 - 动物同行</title>
+    <title>今日账单 V2.2 - 设计师版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
-        
+        :root {
+            --bg-color: #FDFBF7;
+            --primary: #8BA888; /* 抹茶绿 */
+            --accent: #D4A373;  /* 柔和可可 */
+            --text-main: #4A4E4D;
+            --card-shadow: 0 10px 30px -10px rgba(139, 168, 136, 0.15);
+        }
+
         body {
-            font-family: 'Noto Sans SC', sans-serif;
-            background-color: #FAF9F6;
-            color: #4A4A4A;
-            -webkit-tap-highlight-color: transparent;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            letter-spacing: -0.01em;
         }
 
-        .mikan-card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-            transition: all 0.2s;
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 28px;
+            box-shadow: var(--card-shadow);
         }
 
-        .animal-btn {
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .animal-chip {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: grayscale(0.4) opacity(0.7);
         }
 
-        .animal-btn.active {
-            transform: scale(1.15);
-            background-color: #FFEDD5;
-            border: 2px solid #FB923C;
+        .animal-chip.active {
+            filter: grayscale(0) opacity(1);
+            transform: translateY(-4px) scale(1.1);
         }
 
-        .bottom-sheet {
-            transition: transform 0.3s ease-out;
-            transform: translateY(100%);
+        .voice-wave {
+            display: none;
+            gap: 3px;
         }
+        .listening .voice-wave { display: flex; }
+        .bar { width: 3px; height: 12px; background: white; border-radius: 10px; animation: wave 1s infinite; }
+        @keyframes wave { 0%, 100% { height: 4px; } 50% { height: 16px; } }
 
-        .bottom-sheet.active {
-            transform: translateY(0);
-        }
-
-        .folded-content { display: none; }
-        .expanded .folded-content { display: block; }
-        
         /* 隐藏滚动条 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        @keyframes pulse-orange {
-            0% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(251, 146, 60, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0); }
-        }
-        .listening { animation: pulse-orange 1.5s infinite; }
+
+        .modal-up { transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .modal-up.active { transform: translateY(0); }
     </style>
 </head>
-<body class="pb-32">
+<body class="pb-24">
 
-    <header class="p-6 bg-white sticky top-0 z-30 border-b border-gray-50">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-black text-gray-800 tracking-tight">今日账单</h1>
-            <button onclick="openHistory()" class="flex items-center space-x-1 px-3 py-1.5 bg-orange-50 text-orange-500 rounded-full text-sm font-bold">
-                <i data-lucide="archive" class="w-4 h-4"></i>
-                <span>历史账单</span>
-            </button>
+    <header class="p-6 pb-2 flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-serif italic font-bold text-slate-800">今日账单</h1>
+            <input id="tripName" type="text" placeholder="去哪儿玩了？" 
+                class="bg-transparent border-none text-sm text-slate-400 focus:ring-0 p-0 mt-1 placeholder-slate-300">
         </div>
-        <div class="relative">
-            <input id="tripTitleInput" type="text" placeholder="给本次旅行起个名字（如：东京漫游）" 
-                class="w-full text-lg font-medium border-none bg-gray-50 p-3 rounded-xl focus:ring-2 focus:ring-orange-100">
-        </div>
+        <button onclick="toggleModal('historyModal', true)" class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400">
+            <i data-lucide="layout-grid" class="w-5 h-5"></i>
+        </button>
     </header>
 
-    <main class="p-4 space-y-6">
-        
-        <section class="mikan-card p-6 border-2 border-orange-100">
-            <div id="micButton" onclick="startVoiceAction()" class="w-full py-6 bg-orange-400 text-white rounded-2xl font-bold flex flex-col items-center justify-center space-y-2 cursor-pointer active:scale-95 transition-all shadow-lg shadow-orange-100">
-                <i data-lucide="mic" class="w-8 h-8"></i>
-                <span id="micStatus">🎙️ 买了啥 + 金额 + 币种</span>
-            </div>
-        </section>
-
-        <section class="mikan-card p-5 space-y-5">
-            <div class="flex space-x-2">
-                <input id="inputItem" type="text" placeholder="买了啥" class="flex-1 p-3 bg-gray-50 rounded-xl text-sm">
-                <input id="inputAmount" type="number" placeholder="金额" class="w-24 p-3 bg-gray-50 rounded-xl text-sm">
-                <select id="inputCurrency" class="w-20 p-3 bg-gray-50 rounded-xl text-xs font-bold">
-                    <option value="JPY">JPY</option>
-                    <option value="CNY">CNY</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
+    <main class="px-5 space-y-6">
+        <section class="glass-card p-5 space-y-4">
+            <div class="flex items-center space-x-3 bg-slate-50/50 p-2 rounded-2xl">
+                <input id="inputItem" type="text" placeholder="买了什么..." class="flex-1 bg-transparent border-none text-sm focus:ring-0">
+                <div class="h-4 w-px bg-slate-200"></div>
+                <input id="inputAmount" type="number" placeholder="金额" class="w-16 bg-transparent border-none text-sm focus:ring-0 font-bold">
+                <select id="inputCurrency" class="bg-transparent border-none text-[10px] font-bold text-slate-400 focus:ring-0 p-0">
+                    <option>JPY</option><option>CNY</option><option>USD</option>
                 </select>
+                <button id="micBtn" onclick="startVoiceRec()" class="w-10 h-10 bg-[#8BA888] text-white rounded-xl flex items-center justify-center transition-all">
+                    <i data-lucide="mic" class="w-4 h-4 mic-icon"></i>
+                    <div class="voice-wave">
+                        <div class="bar" style="animation-delay: 0.1s"></div>
+                        <div class="bar" style="animation-delay: 0.3s"></div>
+                        <div class="bar" style="animation-delay: 0.2s"></div>
+                    </div>
+                </button>
             </div>
 
-            <div>
-                <p class="text-[10px] font-bold text-gray-400 mb-3 px-1 uppercase tracking-wider">选择同行者</p>
-                <div id="animalGrid" class="grid grid-cols-5 md:grid-cols-10 gap-3">
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="1">
-                        <div class="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center text-2xl">🐱</div>
+            <div class="overflow-x-auto no-scrollbar py-2">
+                <div id="animalContainer" class="flex space-x-4 min-w-max px-1">
                     </div>
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="2">
-                        <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-2xl">🐶</div>
-                    </div>
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="3">
-                        <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-2xl">🦊</div>
-                    </div>
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="4">
-                        <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl">🐻</div>
-                    </div>
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="5">
-                        <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-2xl">🐰</div>
-                    </div>
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="6">
-                        <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-2xl">🦁</div>
-                    </div>
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="7">
-                        <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-2xl">🐼</div>
-                    </div>
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="8">
-                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-2xl">🐨</div>
-                    </div>
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="9">
-                        <div class="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-2xl">🐸</div>
-                    </div>
-                    <div onclick="toggleAnimal(this)" class="animal-btn flex flex-col items-center cursor-pointer" data-id="10">
-                        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">🐷</div>
-                    </div>
-                </div>
             </div>
 
-            <button onclick="saveNewRecord()" class="w-full py-3 bg-gray-800 text-white rounded-xl font-bold active:bg-black transition-colors">
-                记入明细
+            <button onclick="addRecord()" class="w-full py-3.5 bg-slate-800 text-white rounded-2xl text-sm font-bold tracking-widest active:scale-95 transition-transform">
+                记录一笔
             </button>
         </section>
 
-        <section id="recordList" class="space-y-4">
+        <section id="recordList" class="space-y-3">
             </section>
-
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 flex space-x-3 z-40">
-        <button onclick="calculateSettlement()" class="flex-1 py-4 bg-orange-400 text-white rounded-2xl font-bold flex items-center justify-center space-x-2 shadow-lg shadow-orange-100">
-            <i data-lucide="wallet"></i>
-            <span>结算与复制账单</span>
+    <div class="fixed bottom-6 right-6 flex flex-col space-y-3">
+        <button onclick="copyCurrentSummary()" class="w-14 h-14 bg-white shadow-xl rounded-full flex items-center justify-center text-[#8BA888] border border-slate-100">
+            <i data-lucide="share-2"></i>
         </button>
-        <button onclick="endCurrentTrip()" class="px-5 py-4 bg-gray-100 text-gray-500 rounded-2xl">
-            <i data-lucide="check-circle-2"></i>
+        <button onclick="finishTrip()" class="w-14 h-14 bg-slate-800 shadow-xl rounded-full flex items-center justify-center text-white">
+            <i data-lucide="check"></i>
         </button>
-    </nav>
+    </div>
 
-    <div id="historyModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end">
-        <div class="bottom-sheet w-full h-[80vh] bg-[#FAF9F6] rounded-t-[32px] flex flex-col">
-            <div class="p-6 flex justify-between items-center bg-white rounded-t-[32px]">
-                <h3 class="text-xl font-bold">历史旅行记录</h3>
-                <button onclick="closeHistory()" class="p-2"><i data-lucide="x"></i></button>
+    <div id="historyModal" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-50 hidden">
+        <div class="modal-up fixed bottom-0 left-0 right-0 h-[85vh] bg-[#FDFBF7] rounded-t-[40px] shadow-2xl flex flex-col">
+            <div class="p-6 flex justify-between items-center">
+                <h2 class="text-xl font-bold">旅行簿</h2>
+                <button onclick="toggleModal('historyModal', false)" class="text-slate-300"><i data-lucide="x"></i></button>
             </div>
-            <div id="historyContent" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div id="historyList" class="flex-1 overflow-y-auto px-6 pb-10 space-y-4">
                 </div>
+        </div>
+    </div>
+
+    <div id="manageModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden">
+        <div class="modal-up fixed bottom-0 left-0 right-0 h-[70vh] bg-white rounded-t-[40px] flex flex-col p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="manageTitle" class="font-bold">账单详情</h3>
+                <button onclick="toggleModal('manageModal', false)" class="text-slate-300"><i data-lucide="x"></i></button>
+            </div>
+            <div id="manageDetailList" class="flex-1 overflow-y-auto space-y-3"></div>
         </div>
     </div>
 
     <script>
         lucide.createIcons();
 
-        // 汇率模拟 (1 外币 = 多少 CNY)
-        const exchangeRates = {
-            'JPY': 0.048,
-            'USD': 7.24,
-            'EUR': 7.85,
-            'CNY': 1.0
-        };
+        // 核心配置
+        const EXCHANGE_RATE = 0.048; // JPY -> CNY
+        const ANIMALS = ["🧁", "🍩", "🍄", "🥑", "🍋", "🥦", "🥨", "🍭", "🍇", "🥝"]; // 插画风格Emoji
+        const ANIMAL_NAMES = ["小粉", "圆圆", "刺刺", "油油", "酸酸", "森森", "结结", "甜甜", "紫紫", "脆脆"];
 
         let state = {
-            currentTripRecords: [],
-            history: JSON.parse(localStorage.getItem('animal_billing_history') || '[]'),
+            currentRecords: [],
+            history: JSON.parse(localStorage.getItem('trip_history_v2') || '[]'),
             editingId: null
         };
 
-        const animals = ["🐱", "🐶", "🦊", "🐻", "🐰", "🦁", "🐼", "🐨", "🐸", "🐷"];
-
-        // 核心交互：记账
-        function saveNewRecord() {
-            const item = document.getElementById('inputItem').value;
-            const amount = parseFloat(document.getElementById('inputAmount').value);
-            const currency = document.getElementById('inputCurrency').value;
-            const selectedAnimals = Array.from(document.querySelectorAll('.animal-btn.active')).map(el => el.dataset.id);
-
-            if (!item || !amount) return alert("请填写内容和金额~");
-
-            const newRecord = {
-                id: state.editingId || Date.now(),
-                item,
-                amount,
-                currency,
-                animals: selectedAnimals,
-                date: new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
-            };
-
-            if (state.editingId) {
-                state.currentTripRecords = state.currentTripRecords.map(r => r.id === state.editingId ? newRecord : r);
-                state.editingId = null;
-            } else {
-                state.currentTripRecords.unshift(newRecord);
-            }
-
-            resetForm();
-            renderRecords();
-        }
-
-        function resetForm() {
-            document.getElementById('inputItem').value = '';
-            document.getElementById('inputAmount').value = '';
-            document.querySelectorAll('.animal-btn.active').forEach(el => el.classList.remove('active'));
+        // 初始化动物选择
+        function initAnimals() {
+            const container = document.getElementById('animalContainer');
+            ANIMALS.forEach((emoji, i) => {
+                container.innerHTML += `
+                    <div onclick="toggleAnimal(this)" class="animal-chip flex flex-col items-center space-y-2 cursor-pointer" data-index="${i}">
+                        <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-slate-50">${emoji}</div>
+                    </div>
+                `;
+            });
         }
 
         function toggleAnimal(el) {
             el.classList.toggle('active');
         }
 
-        // 语音模拟
-        function startVoiceAction() {
-            const btn = document.getElementById('micButton');
-            const status = document.getElementById('micStatus');
+        // 语音听取模拟
+        function startVoiceRec() {
+            const btn = document.getElementById('micBtn');
             btn.classList.add('listening');
-            status.innerText = "正在倾听...";
-
+            
+            // 模拟长达3秒的识别过程
             setTimeout(() => {
                 btn.classList.remove('listening');
-                status.innerText = "🎙️ 买了啥 + 金额 + 币种";
-                // 模拟识别：和牛 5000 日元
-                document.getElementById('inputItem').value = "和牛烧肉";
-                document.getElementById('inputAmount').value = "5000";
+                // 模拟结果
+                document.getElementById('inputItem').value = "便利店零食";
+                document.getElementById('inputAmount').value = "1280";
                 document.getElementById('inputCurrency').value = "JPY";
-                // 模拟自动选中小柴、小狸
-                document.querySelectorAll('.animal-btn')[1].classList.add('active');
-                document.querySelectorAll('.animal-btn')[2].classList.add('active');
-            }, 1500);
+                // 自动选中第1,3个
+                document.querySelectorAll('.animal-chip')[0].classList.add('active');
+                document.querySelectorAll('.animal-chip')[2].classList.add('active');
+            }, 2500);
         }
 
-        // 渲染列表
-        function renderRecords() {
+        // 添加记录
+        function addRecord() {
+            const item = document.getElementById('inputItem').value;
+            const amt = parseFloat(document.getElementById('inputAmount').value);
+            const cur = document.getElementById('inputCurrency').value;
+            const selected = Array.from(document.querySelectorAll('.animal-chip.active')).map(el => parseInt(el.dataset.index));
+
+            if(!item || !amt) return;
+
+            const rec = {
+                id: state.editingId || Date.now(),
+                item, amount: amt, currency: cur, 
+                animals: selected,
+                cny: cur === 'JPY' ? (amt * EXCHANGE_RATE).toFixed(2) : amt.toFixed(2)
+            };
+
+            if(state.editingId) {
+                state.currentRecords = state.currentRecords.map(r => r.id === state.editingId ? rec : r);
+                state.editingId = null;
+            } else {
+                state.currentRecords.unshift(rec);
+            }
+
+            resetInput();
+            render();
+        }
+
+        function resetInput() {
+            document.getElementById('inputItem').value = '';
+            document.getElementById('inputAmount').value = '';
+            document.querySelectorAll('.animal-chip.active').forEach(el => el.classList.remove('active'));
+        }
+
+        function render() {
             const list = document.getElementById('recordList');
             list.innerHTML = '';
-            
-            state.currentTripRecords.forEach(rec => {
-                const cnyValue = (rec.amount * exchangeRates[rec.currency]).toFixed(2);
-                const animalIcons = rec.animals.map(id => animals[id-1]).join(' ');
-
-                const div = document.createElement('div');
-                div.className = "mikan-card p-4 relative border-l-4 border-orange-400";
-                div.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-bold text-gray-800">${rec.item}</h4>
-                            <p class="text-[10px] text-gray-400 mt-1">同行：${animalIcons || '仅自己'}</p>
+            state.currentRecords.forEach(r => {
+                list.innerHTML += `
+                    <div class="glass-card p-4 flex justify-between items-center">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-slate-700">${r.item}</h4>
+                            <div class="flex space-x-1 mt-1">${r.animals.map(idx => `<span class="text-xs opacity-70">${ANIMALS[idx]}</span>`).join('')}</div>
                         </div>
-                        <div class="text-right">
-                            <p class="font-bold text-lg">${rec.amount} <span class="text-xs">${rec.currency}</span></p>
-                            <p class="text-[10px] text-orange-500 font-medium">≈ ¥${cnyValue} CNY</p>
+                        <div class="text-right mr-4">
+                            <p class="font-black text-slate-800">${r.amount} <span class="text-[10px] text-slate-400">${r.currency}</span></p>
+                            <p class="text-[10px] text-[#8BA888]">≈ ¥${r.cny}</p>
                         </div>
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-3 pt-2 border-t border-gray-50">
-                        <button onclick="editRecord(${rec.id})" class="text-gray-400 hover:text-orange-500"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                        <button onclick="deleteRecord(${rec.id})" class="text-gray-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        <div class="flex space-x-2">
+                            <button onclick="editRec(${r.id})" class="text-slate-300"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="deleteRec(${r.id})" class="text-slate-300"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
+                        </div>
                     </div>
                 `;
-                list.appendChild(div);
             });
             lucide.createIcons();
         }
 
-        function deleteRecord(id) {
-            if(confirm("确定删除这笔账吗？")) {
-                state.currentTripRecords = state.currentTripRecords.filter(r => r.id !== id);
-                renderRecords();
-            }
-        }
-
-        function editRecord(id) {
-            const rec = state.currentTripRecords.find(r => r.id === id);
-            document.getElementById('inputItem').value = rec.item;
-            document.getElementById('inputAmount').value = rec.amount;
-            document.getElementById('inputCurrency').value = rec.currency;
+        function editRec(id) {
+            const r = state.currentRecords.find(x => x.id === id);
+            document.getElementById('inputItem').value = r.item;
+            document.getElementById('inputAmount').value = r.amount;
             state.editingId = id;
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({top: 0, behavior: 'smooth'});
         }
 
-        // 结算与复制
-        function calculateSettlement() {
-            if (state.currentTripRecords.length === 0) return alert("还没有记账哦~");
+        function deleteRec(id) {
+            state.currentRecords = state.currentRecords.filter(x => x.id !== id);
+            render();
+        }
+
+        // 汇总复制
+        function copyCurrentSummary() {
+            if(state.currentRecords.length === 0) return alert("空空的账单无法分享哦");
             
-            const tripName = document.getElementById('tripTitleInput').value || "本次旅行";
-            let billText = `📝【${tripName}】结算单\n------------------\n`;
+            const trip = document.getElementById('tripName').value || "本次旅行";
+            let text = `🌿 【${trip}】结算汇总\n`;
             
-            const animalDebts = {};
-            state.currentTripRecords.forEach(r => {
-                const perPerson = (r.amount * exchangeRates[r.currency]) / (r.animals.length + 1);
-                r.animals.forEach(id => {
-                    const icon = animals[id-1];
-                    animalDebts[icon] = (animalDebts[icon] || 0) + perPerson;
+            const totals = {};
+            state.currentRecords.forEach(r => {
+                const share = parseFloat(r.cny) / (r.animals.length + 1);
+                r.animals.forEach(idx => {
+                    totals[ANIMALS[idx]] = (totals[ANIMALS[idx]] || 0) + share;
                 });
             });
 
-            for (const [icon, debt] of Object.entries(animalDebts)) {
-                billText += `${icon} 同伴应付: ¥${debt.toFixed(2)} CNY\n`;
-            }
-            billText += `------------------\n生成日期: ${new Date().toLocaleDateString()}`;
-
-            // 复制逻辑
-            const tempInput = document.createElement("textarea");
-            document.body.appendChild(tempInput);
-            tempInput.value = billText;
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
+            for(let key in totals) text += `${key} 应付: ¥${totals[key].toFixed(2)}\n`;
             
-            alert("账单已生成并成功复制到剪贴板！可以直接发送给小伙伴~\n\n" + billText);
+            navigator.clipboard.writeText(text).then(() => alert("汇总已复制到剪贴板！"));
         }
 
-        // 历史旅行管理
-        function endCurrentTrip() {
-            const title = document.getElementById('tripTitleInput').value || "未命名旅行";
-            if (state.currentTripRecords.length === 0) return alert("当前账单是空的呢");
+        // 旅行存档
+        function finishTrip() {
+            const name = document.getElementById('tripName').value || "未命名旅行";
+            if(state.currentRecords.length === 0) return;
 
-            if (confirm(`确定结束【${title}】并存档吗？`)) {
-                const tripData = {
-                    id: Date.now(),
-                    title: title,
-                    records: [...state.currentTripRecords],
-                    time: new Date().toLocaleString()
-                };
-                state.history.unshift(tripData);
-                localStorage.setItem('animal_billing_history', JSON.stringify(state.history));
-                
-                state.currentTripRecords = [];
-                document.getElementById('tripTitleInput').value = "";
-                renderRecords();
-                alert("已成功存档至历史合集！");
+            const trip = {
+                id: Date.now(),
+                name: name,
+                records: [...state.currentRecords],
+                date: new Date().toLocaleDateString()
+            };
+
+            state.history.unshift(trip);
+            localStorage.setItem('trip_history_v2', JSON.stringify(state.history));
+            
+            state.currentRecords = [];
+            document.getElementById('tripName').value = '';
+            render();
+            alert("已归档至历史账单");
+        }
+
+        // 弹窗管理
+        function toggleModal(id, show) {
+            const m = document.getElementById(id);
+            if(show) {
+                m.classList.remove('hidden');
+                setTimeout(() => m.querySelector('.modal-up').classList.add('active'), 10);
+                if(id === 'historyModal') renderHistory();
+            } else {
+                m.querySelector('.modal-up').classList.remove('active');
+                setTimeout(() => m.classList.add('hidden'), 400);
             }
         }
 
-        function openHistory() {
-            const modal = document.getElementById('historyModal');
-            const content = document.getElementById('historyContent');
-            content.innerHTML = '';
-
+        // 渲染历史
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
             state.history.forEach(trip => {
-                const div = document.createElement('div');
-                div.className = "mikan-card p-5";
-                div.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <h4 class="font-black text-lg">${trip.title}</h4>
-                        <button onclick="deleteTrip(${trip.id})" class="text-red-400 p-1"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                    </div>
-                    <div class="space-y-2 opacity-70 pointer-events-none">
-                        ${trip.records.slice(0, 2).map(r => `<p class="text-xs">· ${r.item} (${r.amount}${r.currency})</p>`).join('')}
-                        ${trip.records.length > 2 ? `<p class="text-[10px]">...等共 ${trip.records.length} 笔</p>` : ''}
-                    </div>
-                    <div class="mt-4 flex space-x-2">
-                         <button onclick="deleteIndividualRecordFromHistory(${trip.id})" class="flex-1 py-2 bg-gray-50 rounded-lg text-xs font-bold text-gray-400">管理记录</button>
+                list.innerHTML += `
+                    <div class="glass-card p-5 bg-white">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-800">${trip.name}</h3>
+                                <p class="text-[10px] text-slate-300">${trip.date} · 共${trip.records.length}笔</p>
+                            </div>
+                            <button onclick="deleteTrip(${trip.id})" class="text-red-200"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                        <button onclick="manageTripRecords(${trip.id})" class="mt-4 w-full py-2 border border-slate-100 rounded-xl text-xs text-slate-400 font-bold">查看/删除明细</button>
                     </div>
                 `;
-                content.appendChild(div);
             });
-            
-            modal.classList.remove('hidden');
-            setTimeout(() => modal.querySelector('.bottom-sheet').classList.add('active'), 10);
             lucide.createIcons();
         }
 
-        function closeHistory() {
-            const modal = document.getElementById('historyModal');
-            modal.querySelector('.bottom-sheet').classList.remove('active');
-            setTimeout(() => modal.classList.add('hidden'), 300);
-        }
-
         function deleteTrip(id) {
-            if(confirm("要彻底删除这一整个旅行的账单吗？")) {
+            if(confirm("确定永久删除这次旅行记录吗？")) {
                 state.history = state.history.filter(t => t.id !== id);
-                localStorage.setItem('animal_billing_history', JSON.stringify(state.history));
-                openHistory();
+                localStorage.setItem('trip_history_v2', JSON.stringify(state.history));
+                renderHistory();
             }
         }
+
+        // 管理历史旅行中的单笔记录
+        function manageTripRecords(tripId) {
+            const trip = state.history.find(t => t.id === tripId);
+            document.getElementById('manageTitle').innerText = trip.name;
+            const list = document.getElementById('manageDetailList');
+            list.innerHTML = '';
+            
+            trip.records.forEach(r => {
+                list.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                        <span class="text-sm">${r.item} (${r.amount}${r.currency})</span>
+                        <button onclick="deleteRecordInHistory(${tripId}, ${r.id})" class="text-slate-300"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                `;
+            });
+            
+            toggleModal('manageModal', true);
+            lucide.createIcons();
+        }
+
+        function deleteRecordInHistory(tripId, recId) {
+            const trip = state.history.find(t => t.id === tripId);
+            trip.records = trip.records.filter(r => r.id !== recId);
+            
+            if(trip.records.length === 0) {
+                state.history = state.history.filter(t => t.id !== tripId);
+                toggleModal('manageModal', false);
+            }
+            
+            localStorage.setItem('trip_history_v2', JSON.stringify(state.history));
+            manageTripRecords(tripId);
+            renderHistory();
+        }
+
+        initAnimals();
+        render();
     </script>
 </body>
 </html>
