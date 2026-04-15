@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>可爱动物同行记账 V2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #FAF9F6; /* 奶油色背景 */
+            color: #4A4A4A;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mikan-card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.02);
+        }
+
+        .animal-btn {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .animal-btn.active {
+            transform: scale(1.1);
+            background-color: #FFEDD5;
+            border-color: #FB923C;
+        }
+
+        .bottom-sheet {
+            transition: transform 0.3s ease-out;
+            transform: translateY(100%);
+        }
+
+        .bottom-sheet.active {
+            transform: translateY(0);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .folded-content {
+            display: none;
+        }
+
+        .expanded .folded-content {
+            display: block;
+        }
+    </style>
+</head>
+<body class="pb-32">
+
+    <header class="p-6 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10">
+        <div>
+            <h1 id="travelTitle" class="text-xl font-bold text-gray-800">当前旅行：东京漫游记</h1>
+            <p class="text-xs text-gray-400 mt-1">记录每一份美好的共同回忆</p>
+        </div>
+        <button onclick="toggleHistory()" class="p-2 bg-orange-50 rounded-full text-orange-400">
+            <i data-lucide="book-marked"></i>
+        </button>
+    </header>
+
+    <main class="p-4 space-y-6">
+        
+        <section class="mikan-card p-6">
+            <div class="flex flex-col items-center justify-center space-y-4">
+                <button onclick="simulateVoiceInput()" class="w-full py-4 bg-orange-400 text-white rounded-2xl font-bold flex items-center justify-center space-x-2 shadow-lg shadow-orange-200 active:scale-95 transition-transform">
+                    <i data-lucide="mic"></i>
+                    <span>🎙️ 买了啥+金额+币种</span>
+                </button>
+                <p class="text-[10px] text-gray-400">例如：“拉面50块和小柴、小狸”</p>
+            </div>
+
+            <hr class="my-6 border-dashed border-gray-100">
+
+            <div class="space-y-4">
+                <div class="flex space-x-2">
+                    <div class="flex-1">
+                        <label class="text-xs font-bold text-gray-500 ml-1">金额</label>
+                        <input id="inputAmount" type="number" placeholder="0.00" class="w-full p-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-200 mt-1">
+                    </div>
+                    <div class="w-24">
+                        <label class="text-xs font-bold text-gray-500 ml-1">币种</label>
+                        <select id="inputCurrency" class="w-full p-3 bg-gray-50 border-none rounded-xl mt-1">
+                            <option>CNY</option>
+                            <option>JPY</option>
+                            <option>USD</option>
+                            <option>EUR</option>
+                            <option>KRW</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-gray-500 ml-1">买了啥</label>
+                    <input id="inputItem" type="text" placeholder="例如：便利店零食" class="w-full p-3 bg-gray-50 border-none rounded-xl mt-1">
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-gray-500 ml-1">和谁一起？</label>
+                        <span class="text-[10px] text-orange-400">默认包含自己</span>
+                    </div>
+                    <div id="animalContainer" class="flex space-x-4 overflow-x-auto hide-scrollbar py-2">
+                        <div onclick="toggleAnimal(this)" class="animal-btn flex-shrink-0 flex flex-col items-center space-y-1 cursor-pointer group" data-name="小咪">
+                            <div class="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-2xl border-2 border-transparent group-hover:border-orange-200">🐱</div>
+                            <span class="text-[10px] font-medium">小咪</span>
+                        </div>
+                        <div onclick="toggleAnimal(this)" class="animal-btn flex-shrink-0 flex flex-col items-center space-y-1 cursor-pointer group" data-name="小柴">
+                            <div class="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-2xl border-2 border-transparent group-hover:border-orange-200">🐶</div>
+                            <span class="text-[10px] font-medium">小柴</span>
+                        </div>
+                        <div onclick="toggleAnimal(this)" class="animal-btn flex-shrink-0 flex flex-col items-center space-y-1 cursor-pointer group" data-name="小狸">
+                            <div class="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-2xl border-2 border-transparent group-hover:border-orange-200">🦊</div>
+                            <span class="text-[10px] font-medium">小狸</span>
+                        </div>
+                        <div onclick="toggleAnimal(this)" class="animal-btn flex-shrink-0 flex flex-col items-center space-y-1 cursor-pointer group" data-name="小胖">
+                            <div class="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center text-2xl border-2 border-transparent group-hover:border-orange-200">🐻</div>
+                            <span class="text-[10px] font-medium">小胖</span>
+                        </div>
+                        <div onclick="toggleAnimal(this)" class="animal-btn flex-shrink-0 flex flex-col items-center space-y-1 cursor-pointer group" data-name="小糯">
+                            <div class="w-12 h-12 bg-pink-50 rounded-full flex items-center justify-center text-2xl border-2 border-transparent group-hover:border-orange-200">🐰</div>
+                            <span class="text-[10px] font-medium">小糯</span>
+                        </div>
+                        <button onclick="addNewAnimal()" class="flex-shrink-0 w-12 h-12 border-2 border-dashed border-gray-200 rounded-full flex items-center justify-center text-gray-400">
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="saveRecord()" class="w-full py-3 bg-gray-800 text-white rounded-xl font-medium active:scale-95 transition-transform">
+                    保存记录
+                </button>
+            </div>
+        </section>
+
+        <section id="recordList" class="space-y-4">
+            </section>
+
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
+        <div class="max-w-md mx-auto flex space-x-3">
+            <button onclick="showSettlement()" class="flex-1 py-4 bg-white border-2 border-orange-100 text-orange-500 rounded-2xl font-bold flex items-center justify-center space-x-2 shadow-sm">
+                <i data-lucide="calculator"></i>
+                <span>账单结算</span>
+            </button>
+            <button onclick="startNewTravelPrompt()" class="p-4 bg-gray-100 text-gray-500 rounded-2xl">
+                <i data-lucide="refresh-cw"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div id="voiceModal" class="fixed inset-0 bg-black/40 z-50 hidden flex items-end">
+        <div class="bottom-sheet w-full bg-white rounded-t-[32px] p-8 space-y-6">
+            <div class="flex justify-center">
+                <div class="w-12 h-1.5 bg-gray-100 rounded-full"></div>
+            </div>
+            <h3 class="text-lg font-bold text-center italic text-orange-500">“识别成功啦！”</h3>
+            <div class="space-y-4 py-4 border-y border-gray-50">
+                <div class="flex justify-between">
+                    <span class="text-gray-400">买了啥</span>
+                    <span id="confirmItem" class="font-bold">拉面</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">金额</span>
+                    <span id="confirmAmount" class="font-bold">50.00 JPY</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">同行的小动物</span>
+                    <span id="confirmAnimals" class="font-bold">小柴, 小狸</span>
+                </div>
+            </div>
+            <div class="flex space-x-3">
+                <button onclick="closeVoiceModal()" class="flex-1 py-4 bg-gray-100 rounded-2xl font-bold text-gray-500">修改</button>
+                <button onclick="confirmVoiceSave()" class="flex-1 py-4 bg-orange-400 rounded-2xl font-bold text-white shadow-lg shadow-orange-100">确认保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化图标
+        lucide.createIcons();
+
+        // 核心数据模型
+        let currentTravel = {
+            title: "东京漫游记",
+            records: [
+                { date: '2026-04-14', item: '星巴克', amount: 1200, currency: 'JPY', animals: ['小咪', '小柴'] },
+                { date: '2026-04-14', item: '浅草寺门票', amount: 1000, currency: 'JPY', animals: ['小咪', '小柴', '小狸', '小胖'] },
+                { date: '2026-04-13', item: '居酒屋晚饭', amount: 8500, currency: 'JPY', animals: ['小狸'] }
+            ]
+        };
+
+        const todayStr = '2026-04-15'; // 模拟当前日期
+
+        // 同行者多选逻辑
+        function toggleAnimal(el) {
+            el.classList.toggle('active');
+        }
+
+        // 语音输入模拟
+        function simulateVoiceInput() {
+            // 模拟识别逻辑
+            document.getElementById('confirmItem').innerText = "和牛烧肉";
+            document.getElementById('confirmAmount').innerText = "12000 JPY";
+            document.getElementById('confirmAnimals').innerText = "小柴, 小糯";
+            
+            const modal = document.getElementById('voiceModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.querySelector('.bottom-sheet').classList.add('active');
+            }, 10);
+        }
+
+        function closeVoiceModal() {
+            const modal = document.getElementById('voiceModal');
+            modal.querySelector('.bottom-sheet').classList.remove('active');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function confirmVoiceSave() {
+            // 模拟存入数据
+            currentTravel.records.unshift({
+                date: todayStr,
+                item: "和牛烧肉",
+                amount: 12000,
+                currency: "JPY",
+                animals: ["小柴", "小糯"]
+            });
+            renderRecords();
+            closeVoiceModal();
+        }
+
+        // 保存记录
+        function saveRecord() {
+            const amount = document.getElementById('inputAmount').value;
+            const item = document.getElementById('inputItem').value;
+            const currency = document.getElementById('inputCurrency').value;
+            const selectedAnimals = Array.from(document.querySelectorAll('.animal-btn.active')).map(el => el.dataset.name);
+
+            if(!amount || !item) {
+                alert("请填写完整信息哦~");
+                return;
+            }
+
+            currentTravel.records.unshift({
+                date: todayStr,
+                item: item,
+                amount: parseFloat(amount),
+                currency: currency,
+                animals: selectedAnimals
+            });
+
+            // 清空表单
+            document.getElementById('inputAmount').value = '';
+            document.getElementById('inputItem').value = '';
+            document.querySelectorAll('.animal-btn.active').forEach(el => el.classList.remove('active'));
+            
+            renderRecords();
+        }
+
+        // 渲染记录列表 (含折叠逻辑)
+        function renderRecords() {
+            const list = document.getElementById('recordList');
+            list.innerHTML = '';
+
+            // 按日期分组
+            const groups = currentTravel.records.reduce((acc, rec) => {
+                if (!acc[rec.date]) acc[rec.date] = [];
+                acc[rec.date].push(rec);
+                return acc;
+            }, {});
+
+            const sortedDates = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
+
+            sortedDates.forEach(date => {
+                const isToday = date === todayStr;
+                const dateLabel = isToday ? "今天" : (date === '2026-04-14' ? "昨天" : date);
+                
+                const groupTotal = groups[date].reduce((sum, r) => sum + r.amount, 0);
+                const currency = groups[date][0].currency;
+
+                const section = document.createElement('div');
+                section.className = `space-y-3 ${isToday ? 'expanded' : ''}`;
+                
+                section.innerHTML = `
+                    <div onclick="this.parentElement.classList.toggle('expanded')" class="flex justify-between items-center px-2 cursor-pointer">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-sm text-gray-400">${dateLabel}</span>
+                            <span class="text-[10px] px-2 py-0.5 bg-gray-100 rounded-full text-gray-500">${groups[date].length} 笔记录</span>
+                        </div>
+                        <div class="flex items-center space-x-1 text-gray-400">
+                            <span class="text-xs font-medium">共 ${groupTotal.toFixed(0)} ${currency}</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform ${isToday ? '' : '-rotate-90'}"></i>
+                        </div>
+                    </div>
+                    <div class="folded-content space-y-3">
+                        ${groups[date].map(rec => `
+                            <div class="mikan-card p-4 flex justify-between items-center border-l-4 border-orange-300">
+                                <div>
+                                    <h4 class="font-bold text-gray-700">${rec.item}</h4>
+                                    <div class="flex items-center space-x-1 mt-1">
+                                        <span class="text-[10px] text-gray-400">和</span>
+                                        <span class="text-[10px] text-orange-400">${rec.animals.join('、') || '自己'}</span>
+                                        <span class="text-[10px] text-gray-400">在一起</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold text-gray-800">${rec.amount} <span class="text-[10px]">${rec.currency}</span></p>
+                                    <p class="text-[10px] text-gray-400">每人约 ${(rec.amount / (rec.animals.length + 1)).toFixed(2)}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                list.appendChild(section);
+            });
+            lucide.createIcons();
+        }
+
+        // 旅行管理
+        function startNewTravelPrompt() {
+            if(confirm("是否将本次旅行存档并开始新的记账？")) {
+                alert("已为您存入‘历史旅行簿’！新的旅程开始啦~");
+                currentTravel.records = [];
+                currentTravel.title = "新旅行 " + new Date().toLocaleDateString();
+                document.getElementById('travelTitle').innerText = currentTravel.title;
+                renderRecords();
+            }
+        }
+
+        // 结算功能
+        function showSettlement() {
+            const totals = {};
+            currentTravel.records.forEach(rec => {
+                const perPerson = rec.amount / (rec.animals.length + 1);
+                rec.animals.forEach(a => {
+                    totals[a] = (totals[a] || 0) + perPerson;
+                });
+            });
+
+            let report = "🐾 动物同伴账单汇总：\n\n";
+            for(let animal in totals) {
+                report += `${animal} 应付：${totals[animal].toFixed(2)} JPY\n`;
+            }
+            report += "\n快去分享给小伙伴们吧！";
+            alert(report);
+        }
+
+        // 添加新动物
+        function addNewAnimal() {
+            const name = prompt("给新朋友起个名字？");
+            if (name) {
+                const container = document.getElementById('animalContainer');
+                const btn = document.createElement('div');
+                btn.onclick = function() { toggleAnimal(this); };
+                btn.className = "animal-btn flex-shrink-0 flex flex-col items-center space-y-1 cursor-pointer group";
+                btn.dataset.name = name;
+                btn.innerHTML = `
+                    <div class="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center text-2xl border-2 border-transparent">🐾</div>
+                    <span class="text-[10px] font-medium">${name}</span>
+                `;
+                container.insertBefore(btn, container.lastElementChild);
+            }
+        }
+
+        // 初始渲染
+        renderRecords();
+    </script>
+</body>
+</html>
